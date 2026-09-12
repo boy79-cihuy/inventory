@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Inventory — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg-page:    #F3F4F9;
+    --card:       #FFFFFF;
+    --border:     #E8E9F1;
+    --ink:        #1E2130;
+    --ink-soft:   #8B90A6;
+    --ink-faint:  #B3B7C6;
+    --primary:    #4A5AE8;
+    --primary-dark:#3A47C4;
+    --primary-tint:#EEF0FE;
+    --lav:        #C9CEFB;
+    --success:    #1DA463;
+    --success-tint:#E3F7EC;
+    --danger:     #E4483E;
+    --danger-tint:#FDEAEA;
+    --warn:       #E2932E;
+    --warn-tint:  #FBF0E0;
+    --gray-mid:   #9297A8;
+    --radius-sm:  8px;
+    --radius-md:  12px;
+    --font-head:  'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-body:  'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono:  'IBM Plex Mono', ui-monospace, monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg-page);
+    color:var(--ink);
+    font-family:var(--font-body);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  body.panel-open{ overflow:hidden; }
+  button{ font-family:inherit; }
+  input{ font-family:inherit; }
+
+  /* ================= SHELL ================= */
+  .shell{ display:flex; min-height:100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:248px; flex-shrink:0;
+    background:var(--card);
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column;
+    padding:20px 14px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    z-index:55;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; padding:2px 8px 22px; }
+  .brand-mark{
+    width:32px; height:32px; border-radius:9px;
+    background:var(--primary);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .brand-mark svg{ width:17px; height:17px; }
+  .brand-name{ font-family:var(--font-head); font-weight:800; font-size:17px; letter-spacing:-0.01em; }
+
+  .nav-section{ margin-bottom:18px; }
+  .nav-label{
+    font-size:11px; font-weight:600; letter-spacing:.04em;
+    color:var(--ink-faint); padding:0 10px 8px;
+  }
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    width:100%; border:none; background:none; cursor:pointer;
+    padding:9px 10px; border-radius:8px;
+    font-size:13.5px; font-weight:500; color:var(--ink-soft);
+    text-align:left; margin-bottom:2px;
+    transition:background .12s ease, color .12s ease;
+  }
+  .nav-item svg{ width:17px; height:17px; flex-shrink:0; }
+  .nav-item:hover{ background:var(--bg-page); color:var(--ink); }
+  .nav-item.active{ background:var(--primary-tint); color:var(--primary-dark); font-weight:600; }
+
+  .sidebar-spacer{ flex:1; }
+  .upgrade-card{
+    background:linear-gradient(155deg, var(--primary), var(--primary-dark));
+    border-radius:var(--radius-md);
+    padding:14px;
+    color:#fff;
+    margin-bottom:14px;
+  }
+  .upgrade-card p{ margin:0 0 10px; font-size:12px; line-height:1.5; opacity:.9; }
+  .upgrade-card button{
+    width:100%; border:none; background:rgba(255,255,255,.16);
+    color:#fff; font-weight:600; font-size:12.5px;
+    padding:8px; border-radius:7px; cursor:pointer;
+  }
+  .upgrade-card button:hover{ background:rgba(255,255,255,.26); }
+  .sidebar-foot{ font-size:11px; color:var(--ink-faint); text-align:center; padding:6px 0 2px; }
+
+  .sidebar-overlay{
+    position:fixed; inset:0; background:rgba(20,22,35,.4);
+    z-index:54; opacity:0; pointer-events:none; transition:opacity .2s ease;
+    display:none;
+  }
+  .sidebar-overlay.visible{ opacity:1; pointer-events:auto; }
+
+  /* ---------- Main / topbar ---------- */
+  .main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .topbar{
+    display:flex; align-items:center; gap:14px;
+    padding:14px 26px;
+    border-bottom:1px solid var(--border);
+    background:var(--card);
+    position:sticky; top:0; z-index:30;
+  }
+  .hamburger{
+    display:none; border:none; background:none; cursor:pointer;
+    width:34px; height:34px; border-radius:8px; align-items:center; justify-content:center;
+    color:var(--ink-soft); flex-shrink:0;
+  }
+  .hamburger:hover{ background:var(--bg-page); }
+  .topbar-search{ position:relative; flex:1; max-width:420px; }
+  .topbar-search svg.icon-search{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--ink-faint); }
+  #global-search{
+    width:100%; padding:9px 62px 9px 36px;
+    border:1px solid var(--border); border-radius:9px;
+    background:var(--bg-page); font-size:13.5px; color:var(--ink); outline:none;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  #global-search:focus{ border-color:var(--primary); background:#fff; }
+  .kbd-hint{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    font-size:11px; color:var(--ink-faint); background:#fff; border:1px solid var(--border);
+    padding:2px 6px; border-radius:5px; pointer-events:none;
+  }
+  .topbar-spacer{ flex:1; }
+  .icon-btn{
+    position:relative; width:36px; height:36px; border-radius:9px;
+    border:1px solid var(--border); background:#fff; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:var(--ink-soft); flex-shrink:0;
+  }
+  .icon-btn:hover{ background:var(--bg-page); }
+  .icon-btn svg{ width:16px; height:16px; }
+  .notif-dot{
+    position:absolute; top:7px; right:8px; width:7px; height:7px; border-radius:50%;
+    background:var(--danger); border:1.5px solid #fff;
+  }
+  .user-chip{
+    display:flex; align-items:center; gap:8px; border:none; background:none; cursor:pointer;
+    padding:4px 6px 4px 4px; border-radius:9px;
+  }
+  .user-chip:hover{ background:var(--bg-page); }
+  .user-avatar{
+    width:32px; height:32px; border-radius:50%;
+    background:linear-gradient(135deg,#8791F5,var(--primary));
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:700; font-size:13px; flex-shrink:0;
+  }
+  .user-meta{ text-align:left; display:none; }
+  .user-name{ font-size:12.5px; font-weight:600; line-height:1.2; }
+  .user-role{ font-size:11px; color:var(--ink-soft); }
+  @media (min-width:560px){ .user-meta{ display:block; } }
+
+  .dropdown-panel{
+    position:absolute; top:calc(100% + 8px); right:0;
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    box-shadow:0 12px 28px rgba(20,22,50,.12);
+    min-width:190px; padding:6px; z-index:40;
+    display:none;
+  }
+  .dropdown-panel.open{ display:block; }
+  .dropdown-item{
+    width:100%; text-align:left; border:none; background:none; cursor:pointer;
+    padding:8px 10px; border-radius:7px; font-size:13px; color:var(--ink);
+    display:flex; align-items:center; gap:8px;
+  }
+  .dropdown-item:hover{ background:var(--bg-page); }
+  .dropdown-title{ font-size:11.5px; font-weight:600; color:var(--ink-soft); padding:6px 10px 4px; }
+  .dropdown-empty{ font-size:12.5px; color:var(--ink-soft); padding:10px; }
+  .rel-wrap{ position:relative; }
+
+  /* ================= CONTENT ================= */
+  .content-scroll{ padding:22px 26px 60px; max-width:1240px; width:100%; margin:0 auto; }
+
+  .view-header{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:18px; flex-wrap:wrap;
+  }
+  .view-header h1{ font-family:var(--font-head); font-size:22px; font-weight:800; margin:0; letter-spacing:-0.01em; }
+  .view-actions{ display:flex; align-items:center; gap:10px; }
+  .dropdown-btn{
+    display:flex; align-items:center; gap:6px;
+    border:1px solid var(--border); background:#fff; border-radius:8px;
+    padding:8px 12px; font-size:13px; font-weight:500; color:var(--ink); cursor:pointer;
+  }
+  .dropdown-btn:hover{ background:var(--bg-page); }
+  .dropdown-btn svg{ width:13px; height:13px; color:var(--ink-soft); }
+  .btn-primary-solid{
+    display:flex; align-items:center; gap:6px;
+    border:none; background:var(--primary); color:#fff; font-weight:600; font-size:13px;
+    padding:9px 15px; border-radius:8px; cursor:pointer;
+  }
+  .btn-primary-solid:hover{ background:var(--primary-dark); }
+
+  /* ---------- Stat cards ---------- */
+  .stat-cards{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px;
+  }
+  .stat-card{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
+    padding:16px;
+  }
+  .stat-card-top{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px; }
+  .stat-icon{
+    width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .stat-icon svg{ width:17px; height:17px; }
+  .stat-icon.blue{ background:var(--primary-tint); color:var(--primary); }
+  .stat-icon.green{ background:var(--success-tint); color:var(--success); }
+  .stat-icon.orange{ background:var(--warn-tint); color:var(--warn); }
+  .stat-icon.red{ background:var(--danger-tint); color:var(--danger); }
+  .stat-arrow{ color:var(--ink-faint); cursor:pointer; padding:4px; border:none; background:none; border-radius:6px; }
+  .stat-arrow:hover{ background:var(--bg-page); }
+  .stat-arrow svg{ width:14px; height:14px; }
+  .stat-card-label{ font-size:12.5px; color:var(--ink-soft); margin-bottom:6px; }
+  .stat-card-row{ display:flex; align-items:baseline; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+  .stat-card-value{ font-family:var(--font-mono); font-weight:700; font-size:22px; transition:transform .25s ease; }
+  .stat-card-value.pulse{ animation:pulse .45s ease; }
+  @keyframes pulse{ 0%{ transform:scale(1); } 35%{ transform:scale(1.14); color:var(--primary); } 100%{ transform:scale(1); } }
+  .trend-pill{ display:inline-flex; align-items:center; gap:3px; font-size:11.5px; font-weight:700; padding:2px 7px; border-radius:100px; }
+  .trend-pill.up-good{ background:var(--success-tint); color:var(--success); }
+  .trend-pill.up-bad{ background:var(--danger-tint); color:var(--danger); }
+  .trend-pill svg{ width:10px; height:10px; }
+  .stat-card-compare{ font-size:11.5px; color:var(--ink-faint); }
+
+  /* ---------- Dashboard grid ---------- */
+  .dash-grid{ display:grid; grid-template-columns:1.15fr 1fr 1fr; gap:14px; margin-bottom:16px; align-items:stretch; }
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:18px;
+    display:flex; flex-direction:column;
+  }
+  .card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .card-title{ font-family:var(--font-head); font-weight:700; font-size:14.5px; }
+  .card-canvas-wrap{ position:relative; flex:1; min-height:190px; }
+
+  /* status bar list */
+  .status-total{ font-size:12px; color:var(--ink-soft); margin-bottom:2px; }
+  .status-total b{ font-family:var(--font-mono); font-size:21px; color:var(--ink); font-weight:700; margin-right:6px; }
+  .status-rows{ margin-top:14px; display:flex; flex-direction:column; gap:14px; }
+  .status-row{ cursor:pointer; }
+  .status-row-top{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px; }
+  .status-row-top .lbl{ color:var(--ink); font-weight:500; }
+  .status-row-top .num{ font-family:var(--font-mono); color:var(--ink-soft); }
+  .status-track{ height:8px; border-radius:100px; background:var(--bg-page); overflow:hidden; }
+  .status-fill{ height:100%; border-radius:100px; transition:width .35s ease; }
+  .info-card{
+    position:absolute; z-index:45; width:220px;
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    box-shadow:0 16px 32px rgba(20,22,50,.14); padding:12px 14px;
+    font-size:12.5px; line-height:1.6; animation:pop-in .15s ease;
+  }
+  @keyframes pop-in{ from{ opacity:0; transform:translateY(4px);} to{ opacity:1; transform:translateY(0);} }
+  .info-card .ic-title{ font-weight:700; margin-bottom:4px; font-size:13px; }
+  .info-card .ic-line{ display:flex; justify-content:space-between; color:var(--ink-soft); }
+  .info-card .ic-line b{ color:var(--ink); font-family:var(--font-mono); font-weight:600; }
+
+  /* gauge */
+  .gauge-value{ font-family:var(--font-mono); font-weight:700; font-size:19px; margin-bottom:2px; }
+  .gauge-sub{ font-size:12px; color:var(--ink-soft); margin-bottom:6px; }
+  .gauge-canvas-wrap{ position:relative; height:150px; margin:4px 0 2px; }
+  .gauge-center{
+    position:absolute; left:0; right:0; top:64%; text-align:center; pointer-events:none;
+  }
+  .gauge-center .gc-num{ font-family:var(--font-mono); font-weight:700; font-size:15px; }
+  .gauge-center .gc-lbl{ font-size:10.5px; color:var(--ink-soft); }
+  .gauge-legend{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+  .gl-row{ display:flex; align-items:center; gap:8px; font-size:12px; }
+  .gl-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .gl-name{ flex:1; color:var(--ink-soft); }
+  .gl-val{ font-family:var(--font-mono); font-weight:600; }
+
+  /* ---------- Activity card ---------- */
+  .activity-card{ padding:18px 0 6px; }
+  .activity-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 18px 14px; flex-wrap:wrap; }
+  .activity-tools{ display:flex; gap:8px; }
+  .activity-search{ position:relative; }
+  .activity-search svg{ position:absolute; left:10px; top:50%; transform:translateY(-50%); width:13px; height:13px; color:var(--ink-faint); }
+  #activity-search-input{
+    padding:7px 12px 7px 30px; border:1px solid var(--border); border-radius:8px; font-size:12.5px;
+    background:var(--bg-page); outline:none; width:190px;
+  }
+  #activity-search-input:focus{ border-color:var(--primary); background:#fff; }
+  .filter-btn{
+    display:flex; align-items:center; gap:6px; border:1px solid var(--border); background:#fff;
+    border-radius:8px; padding:7px 12px; font-size:12.5px; font-weight:500; cursor:pointer; color:var(--ink);
+  }
+  .filter-btn:hover{ background:var(--bg-page); }
+  .filter-btn svg{ width:13px; height:13px; }
+  .filter-menu label{ display:flex; align-items:center; gap:8px; padding:6px 8px; font-size:12.5px; cursor:pointer; border-radius:6px; }
+  .filter-menu label:hover{ background:var(--bg-page); }
+
+  table.activity-table{ width:100%; border-collapse:collapse; }
+  .activity-table thead th{
+    text-align:left; font-size:11px; color:var(--ink-faint); font-weight:600;
+    padding:0 18px 10px; border-bottom:1px solid var(--border);
+  }
+  .activity-table tbody td{
+    padding:12px 18px; font-size:13px; border-bottom:1px solid var(--border); vertical-align:middle;
+  }
+  .activity-table tbody tr:last-child td{ border-bottom:none; }
+  .act-time{ color:var(--ink-soft); white-space:nowrap; font-size:12.5px; }
+  .act-text{ color:var(--ink); }
+  .act-cat{ color:var(--ink-soft); }
+  .act-user{ color:var(--ink-soft); }
+  .pill{ display:inline-flex; padding:4px 10px; border-radius:100px; font-size:11.5px; font-weight:600; }
+  .pill.good{ background:var(--success-tint); color:var(--success); }
+  .pill.warn{ background:var(--warn-tint); color:var(--warn); }
+  .pill.danger{ background:var(--danger-tint); color:var(--danger); }
+  .activity-empty{ padding:30px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
+
+  /* ================= INVENTORY VIEW (search + list + drawer) ================= */
+  .search-wrap{ position:relative; margin-bottom:16px; max-width:480px; }
+  .search-wrap svg{ position:absolute; left:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--ink-faint); }
+  #search-input{
+    width:100%; padding:12px 40px; font-size:14.5px; color:var(--ink); background:#fff;
+    border:1px solid var(--border); border-radius:10px; outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  #search-input:focus{ border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-tint); }
+  #search-clear{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%); width:24px; height:24px;
+    border:none; background:transparent; color:var(--ink-faint); cursor:pointer; display:none;
+    align-items:center; justify-content:center; border-radius:50%;
+  }
+  #search-clear:hover{ background:var(--bg-page); color:var(--ink); }
+  #search-clear.visible{ display:flex; }
+  .search-meta{ font-size:12.5px; color:var(--ink-soft); margin-bottom:10px; min-height:16px; }
+
+  .list-wrap{ border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); overflow:hidden; }
+  .list-head{
+    display:grid; grid-template-columns:2.1fr 1fr .7fr 1.2fr 20px; gap:8px;
+    padding:10px 18px; font-size:11px; letter-spacing:.03em; color:var(--ink-faint);
+    border-bottom:1px solid var(--border); background:var(--bg-page);
+  }
+  .product-row{
+    display:grid; grid-template-columns:2.1fr 1fr .7fr 1.2fr 20px; gap:8px; align-items:center;
+    padding:14px 18px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s ease;
+  }
+  .product-row:last-child{ border-bottom:none; }
+  .product-row:hover{ background:var(--primary-tint); }
+  .product-row:focus-visible{ outline:2px solid var(--primary); outline-offset:-2px; }
+  .product-name{ font-weight:600; font-size:14px; }
+  .product-category{ font-size:13px; color:var(--ink-soft); }
+  .product-stock{ font-family:var(--font-mono); font-size:13.5px; }
+  .status-cell{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .badge{ display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:100px; font-size:12px; font-weight:600; white-space:nowrap; }
+  .badge.good{ background:var(--success-tint); color:var(--success); }
+  .badge.warn{ background:var(--warn-tint); color:var(--warn); }
+  .badge.danger{ background:var(--danger-tint); color:var(--danger); }
+  .warn-flag{ border:none; background:none; cursor:pointer; padding:3px; display:inline-flex; color:var(--danger); border-radius:50%; position:relative; }
+  .warn-flag:hover{ background:var(--danger-tint); }
+  .warn-flag svg{ width:15px; height:15px; }
+  .chevron{ color:var(--ink-faint); display:flex; }
+  .chevron svg{ width:14px; height:14px; }
+  .empty-state{ padding:48px 20px; text-align:center; color:var(--ink-soft); font-size:14.5px; }
+
+  .popover{
+    position:absolute; z-index:60; max-width:240px; background:var(--ink); color:#fff; font-size:12.5px;
+    line-height:1.45; padding:10px 12px; border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,.18); animation:pop-in .15s ease;
+  }
+
+  /* ---------- Drawer (product detail) ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(20,22,35,.32); opacity:0; pointer-events:none;
+    transition:opacity .2s ease; z-index:70;
+  }
+  .overlay.visible{ opacity:1; pointer-events:auto; }
+  .drawer{
+    position:fixed; top:0; right:0; bottom:0; width:400px; max-width:92vw; background:var(--card);
+    box-shadow:-12px 0 32px rgba(0,0,0,.12); transform:translateX(100%);
+    transition:transform .28s cubic-bezier(.2,.8,.2,1); z-index:75; display:flex; flex-direction:column;
+  }
+  .drawer.open{ transform:translateX(0); }
+  .drawer-header{ display:flex; align-items:flex-start; justify-content:space-between; padding:20px 20px 16px; border-bottom:1px solid var(--border); }
+  .drawer-title{ font-family:var(--font-head); font-weight:800; font-size:18px; color:var(--ink); margin-bottom:4px; }
+  .drawer-category{ font-size:12.5px; color:var(--ink-soft); }
+  .drawer-close{ border:none; background:var(--bg-page); width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-soft); flex-shrink:0; }
+  .drawer-close:hover{ background:var(--border); color:var(--ink); }
+  .drawer-close svg{ width:14px; height:14px; }
+  .drawer-tabs{ display:flex; gap:4px; padding:0 20px; border-bottom:1px solid var(--border); overflow-x:auto; }
+  .drawer-tab{ border:none; background:none; font-size:13px; font-weight:500; color:var(--ink-soft); padding:11px 4px; margin-right:18px; cursor:pointer; white-space:nowrap; border-bottom:2px solid transparent; }
+  .drawer-tab:hover{ color:var(--ink); }
+  .drawer-tab.active{ color:var(--primary-dark); border-bottom-color:var(--primary); }
+  .drawer-body{ padding:20px; overflow-y:auto; flex:1; }
+
+  .fact-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+  .fact{ border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+  .fact-label{ font-size:11px; color:var(--ink-soft); margin-bottom:5px; }
+  .fact-value{ font-family:var(--font-mono); font-size:17px; font-weight:700; }
+  .fact-value.pulse{ animation:pulse .45s ease; }
+  .status-block{ margin-bottom:18px; }
+  .alert-box{ display:flex; gap:10px; padding:12px 14px; border-radius:8px; background:var(--danger-tint); border:1px solid #F2C6C2; color:#9A2F27; font-size:13px; line-height:1.5; margin-bottom:18px; cursor:pointer; }
+  .alert-box svg{ width:17px; height:17px; flex-shrink:0; margin-top:1px; }
+  .risk-note{ font-size:13px; line-height:1.55; color:var(--ink-soft); margin-bottom:20px; }
+  .risk-note strong{ color:var(--ink); }
+  .stepper{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .stepper button{ width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--bg-page); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--ink); }
+  .stepper button:hover{ background:var(--border); }
+  .stepper input{ width:70px; text-align:center; font-family:var(--font-mono); font-size:16px; padding:6px 4px; border:1px solid var(--border); border-radius:8px; }
+  .action-row{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+  .btn{ font-size:14px; font-weight:600; padding:11px 16px; border-radius:8px; border:1px solid transparent; cursor:pointer; text-align:center; }
+  .btn:active{ transform:scale(.98); }
+  .btn-primary{ background:var(--primary); color:#fff; }
+  .btn-primary:hover{ background:var(--primary-dark); }
+  .btn-secondary{ background:#fff; color:var(--ink); border-color:var(--border); }
+  .btn-secondary:hover{ background:var(--bg-page); }
+  .btn-ghost{ background:var(--primary-tint); color:var(--primary-dark); }
+  .btn-ghost:hover{ background:#dfe3fc; }
+  .used-flash{ font-size:12.5px; color:var(--success); font-weight:600; display:none; margin-top:2px; }
+
+  .mini-stats{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
+  .mini-stat{ border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+  .mini-stat-label{ font-size:11px; color:var(--ink-soft); margin-bottom:4px; }
+  .mini-stat-value{ font-family:var(--font-mono); font-size:15px; font-weight:700; }
+  .mini-stat-value.at-risk{ color:var(--danger); }
+  .detail-table{ border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:18px; }
+  .detail-row{ display:flex; justify-content:space-between; gap:12px; padding:10px 14px; font-size:13px; border-bottom:1px solid var(--border); }
+  .detail-row:last-child{ border-bottom:none; }
+  .detail-row dt{ color:var(--ink-soft); margin:0; }
+  .detail-row dd{ margin:0; font-weight:600; text-align:right; }
+  .detail-row dd.mono{ font-family:var(--font-mono); }
+  .timeline{ list-style:none; margin:0; padding:0; }
+  .timeline li{ position:relative; padding:0 0 16px 18px; border-left:2px solid var(--border); font-size:13px; line-height:1.5; }
+  .timeline li:last-child{ padding-bottom:2px; border-left-color:transparent; }
+  .timeline li::before{ content:""; position:absolute; left:-5px; top:2px; width:8px; height:8px; border-radius:50%; background:var(--primary); }
+  .timeline .t-date{ display:block; font-size:11px; color:var(--ink-soft); margin-bottom:2px; }
+  .timeline li.is-new::before{ background:var(--danger); }
+
+  .toast-stack{ position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:8px; z-index:90; max-width:320px; }
+  .toast{ background:var(--ink); color:#fff; font-size:13.5px; padding:12px 14px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.2); animation:toast-in .25s ease; }
+  @keyframes toast-in{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:translateY(0);} }
+  .toast.leaving{ animation:toast-out .2s ease forwards; }
+  @keyframes toast-out{ to{ opacity:0; transform:translateY(4px);} }
+
+  /* ================= RESPONSIVE ================= */
+  @media (max-width:1100px){
+    .dash-grid{ grid-template-columns:1fr 1fr; }
+    .dash-grid .card:nth-child(1){ grid-column:1 / -1; }
+  }
+  @media (max-width:900px){
+    .sidebar{ position:fixed; left:0; top:0; transform:translateX(-100%); transition:transform .25s ease; box-shadow:16px 0 32px rgba(0,0,0,.12); }
+    .sidebar.open{ transform:translateX(0); }
+    .sidebar-overlay{ display:block; }
+    .hamburger{ display:flex; }
+    .stat-cards{ grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width:640px){
+    .content-scroll{ padding:16px 14px 50px; }
+    .dash-grid{ grid-template-columns:1fr; }
+    .dash-grid .card:nth-child(1){ grid-column:auto; }
+    .stat-cards{ grid-template-columns:1fr 1fr; gap:10px; }
+    .activity-head{ flex-direction:column; align-items:stretch; }
+    .activity-tools{ flex-direction:column; }
+    #activity-search-input{ width:100%; }
+    table.activity-table thead{ display:none; }
+    .activity-table tbody tr{ display:block; padding:12px 18px; border-bottom:1px solid var(--border); }
+    .activity-table tbody td{ display:flex; justify-content:space-between; gap:10px; padding:3px 0; border:none; font-size:12.5px; }
+    .activity-table tbody td::before{ content:attr(data-label); color:var(--ink-faint); font-size:11px; }
+    .list-head{ display:none; }
+    .product-row{ grid-template-columns:1fr auto; grid-template-areas:"name chev" "meta chev" "status status"; row-gap:6px; }
+    .product-name{ grid-area:name; } .product-category{ grid-area:meta; } .product-stock{ display:none; }
+    .status-cell{ grid-area:status; } .chevron{ grid-area:chev; align-self:start; }
+    .drawer{ width:100%; max-width:100vw; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>
+        </svg>
+      </div>
+      <div class="brand-name">Stok Barang Gue</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">UMUM</div>
+      <button class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" data-view="inventory">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+        Inventory
+      </button>
+      <button class="nav-item" data-view="toast" data-toast="Halaman Laporan &amp; Analitik belum tersedia di prototipe ini.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-6 3 4 5-7"/></svg>
+        Laporan &amp; Analitik
+      </button>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">MANAJEMEN</div>
+      <button class="nav-item" data-view="inventory">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 12.9L12 21.5 2.5 12l8.6-8.6a2 2 0 0 1 2.8 0l6.7 6.7a2 2 0 0 1 0 2.8z"/><circle cx="8.5" cy="8.5" r="1.2"/></svg>
+        Produk
+      </button>
+      <button class="nav-item" data-view="toast" data-toast="Halaman Pemasok belum tersedia di prototipe ini.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1.5"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="1.6"/><circle cx="18" cy="19" r="1.6"/></svg>
+        Pemasok
+      </button>
+      <button class="nav-item" data-view="toast" data-toast="Halaman Kategori belum tersedia di prototipe ini.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+        Kategori
+      </button>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">PENGATURAN</div>
+      <button class="nav-item" data-view="toast" data-toast="Halaman Pengaturan Akun belum tersedia di prototipe ini.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg>
+        Pengaturan Akun
+      </button>
+      <button class="nav-item" data-view="toast" data-toast="Belum ada notifikasi tambahan yang perlu diatur.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        Notifikasi
+      </button>
+      <button class="nav-item" data-view="toast" data-toast="Pusat bantuan belum tersedia di prototipe ini.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg>
+        Bantuan
+      </button>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+    <div class="upgrade-card">
+      <p>Buka fitur analitik lanjutan &amp; multi-gudang.</p>
+      <button id="btn-upgrade">⚡ Upgrade Paket</button>
+    </div>
+    <div class="sidebar-foot">© 2026 StokCerdas</div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger-btn" aria-label="Buka menu">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="topbar-search">
+        <svg class="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="global-search" type="text" placeholder="Cari produk, kategori…" autocomplete="off">
+        <span class="kbd-hint">⌘F</span>
+      </div>
+      <div class="topbar-spacer"></div>
+
+      <div class="rel-wrap">
+        <button class="icon-btn" id="btn-notif" aria-label="Notifikasi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="notif-dot" id="notif-dot" style="display:none;"></span>
+        </button>
+        <div class="dropdown-panel" id="notif-panel" style="width:270px;"></div>
+      </div>
+
+      <div class="rel-wrap">
+        <button class="user-chip" id="btn-user">
+          <div class="user-avatar">KM</div>
+          <div class="user-meta">
+            <div class="user-name">Kink Mayhem</div>
+            <div class="user-role">Manajer Gudang</div>
+          </div>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="dropdown-panel" id="user-menu">
+          <button class="dropdown-item">👤 Profil Saya</button>
+          <button class="dropdown-item">⚙️ Pengaturan</button>
+          <button class="dropdown-item">🚪 Keluar</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="content-scroll">
+
+      <!-- =============== DASHBOARD VIEW =============== -->
+      <section class="view" id="view-dashboard">
+        <div class="view-header">
+          <h1>Dashboard</h1>
+          <div class="view-actions">
+            <div class="rel-wrap">
+              <button class="dropdown-btn" id="period-btn">
+                <span id="period-label">September</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="dropdown-panel" id="period-menu">
+                <button class="dropdown-item" data-period="Juli">Juli</button>
+                <button class="dropdown-item" data-period="Agustus">Agustus</button>
+                <button class="dropdown-item" data-period="September">September</button>
+              </div>
+            </div>
+            <button class="btn-primary-solid" id="btn-new-order">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Perbarui Stok
+            </button>
+          </div>
+        </div>
+
+        <div class="stat-cards">
+          <div class="stat-card">
+            <div class="stat-card-top">
+              <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></div>
+              <button class="stat-arrow" data-toast="Membuka rincian Total Stok…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+            </div>
+            <div class="stat-card-label">Total Stok</div>
+            <div class="stat-card-row">
+              <div class="stat-card-value" id="val-total">0</div>
+              <span class="trend-pill" id="trend-total"></span>
+            </div>
+            <div class="stat-card-compare" id="cmp-total"></div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-card-top">
+              <div class="stat-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+              <button class="stat-arrow" data-toast="Membuka daftar produk stok menipis…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+            </div>
+            <div class="stat-card-label">Stok Menipis</div>
+            <div class="stat-card-row">
+              <div class="stat-card-value" id="val-low">0</div>
+              <span class="trend-pill" id="trend-low"></span>
+            </div>
+            <div class="stat-card-compare" id="cmp-low"></div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-card-top">
+              <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+              <button class="stat-arrow" data-toast="Membuka daftar produk akan kedaluwarsa…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+            </div>
+            <div class="stat-card-label">Akan Kedaluwarsa</div>
+            <div class="stat-card-row">
+              <div class="stat-card-value" id="val-expiring">0</div>
+              <span class="trend-pill" id="trend-expiring"></span>
+            </div>
+            <div class="stat-card-compare" id="cmp-expiring"></div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-card-top">
+              <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v6h6"/><path d="M20 20v-6h-6"/><path d="M5.5 15a8 8 0 0 0 13-3M18.5 9a8 8 0 0 0-13 3"/></svg></div>
+              <button class="stat-arrow" data-toast="Membuka laporan pengurangan limbah…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+            </div>
+            <div class="stat-card-label">Limbah Berkurang</div>
+            <div class="stat-card-row">
+              <div class="stat-card-value" id="val-waste">0</div>
+              <span class="trend-pill" id="trend-waste"></span>
+            </div>
+            <div class="stat-card-compare" id="cmp-waste"></div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Stok per Kategori</div>
+              <div class="rel-wrap">
+                <button class="dropdown-btn" id="cat-period-btn" style="padding:6px 10px; font-size:12px;">
+                  <span id="cat-period-label">September</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="dropdown-panel" id="cat-period-menu">
+                  <button class="dropdown-item" data-period="Juli">Juli</button>
+                  <button class="dropdown-item" data-period="Agustus">Agustus</button>
+                  <button class="dropdown-item" data-period="September">September</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-canvas-wrap"><canvas id="chart-category"></canvas></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="card-title">Distribusi Status Stok</div></div>
+            <div class="status-total"><b id="status-total-num">0</b>produk dipantau</div>
+            <div class="status-rows" id="status-rows"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="card-title">Nilai Stok per Produk</div></div>
+            <div class="gauge-value" id="gauge-total-value">Rp0</div>
+            <div class="gauge-sub">Total nilai seluruh stok saat ini</div>
+            <div class="gauge-canvas-wrap">
+              <canvas id="chart-value-gauge"></canvas>
+              <div class="gauge-center">
+                <div class="gc-num" id="gauge-center-units">0</div>
+                <div class="gc-lbl">total unit</div>
+              </div>
+            </div>
+            <div class="gauge-legend" id="gauge-legend"></div>
+          </div>
+        </div>
+
+        <div class="card activity-card">
+          <div class="activity-head">
+            <div class="card-title" style="padding-left:2px;">Aktivitas Terbaru</div>
+            <div class="activity-tools">
+              <div class="activity-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input id="activity-search-input" type="text" placeholder="Cari aktivitas…" autocomplete="off">
+              </div>
+              <div class="rel-wrap">
+                <button class="filter-btn" id="activity-filter-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
+                  Filter
+                </button>
+                <div class="dropdown-panel filter-menu" id="activity-filter-menu" style="width:190px;">
+                  <div class="dropdown-title">Tampilkan status</div>
+                  <label><input type="checkbox" value="good" checked> Selesai</label>
+                  <label><input type="checkbox" value="warn" checked> Perlu Perhatian</label>
+                  <label><input type="checkbox" value="danger" checked> Peringatan</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="activity-table">
+              <thead>
+                <tr><th>Waktu</th><th>Aktivitas</th><th>Kategori</th><th>User</th><th>Status</th></tr>
+              </thead>
+              <tbody id="activity-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============== INVENTORY VIEW =============== -->
+      <section class="view" id="view-inventory" hidden>
+        <div class="view-header">
+          <h1>Inventory</h1>
+        </div>
+
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="search-input" type="text" placeholder="Cari produk, kategori…" autocomplete="off">
+          <button id="search-clear" aria-label="Bersihkan pencarian">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="search-meta" id="search-meta"></div>
+
+        <section class="list-wrap">
+          <div class="list-head">
+            <div>Produk</div><div>Kategori</div><div>Stok</div><div>Status</div><div></div>
+          </div>
+          <div id="product-list"></div>
+        </section>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-title" id="drawer-title">—</div>
+      <div class="drawer-category" id="drawer-category">—</div>
+    </div>
+    <button class="drawer-close" id="drawer-close" aria-label="Tutup">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-tabs" id="drawer-tabs">
+    <button class="drawer-tab" data-tab="overview">Ringkasan</button>
+    <button class="drawer-tab" data-tab="trend">Tren &amp; Performa</button>
+    <button class="drawer-tab" data-tab="detail">Detail Produk</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<div class="toast-stack" id="toast-stack"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     UTIL
+  ============================================================ */
+  var DAY = 86400000;
+  var NOW = new Date();
+
+  function fmtNum(n){ return Math.round(n).toLocaleString('id-ID'); }
+  function fmtRp(n){ return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
+  function addDays(base, days){ return new Date(base.getTime() + days*DAY); }
+  function fmtDate(d){
+    var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+  function daysUntil(d){ return Math.ceil((d.getTime() - NOW.getTime()) / DAY); }
+  function daysSince(d){ return Math.floor((NOW.getTime() - d.getTime()) / DAY); }
+  function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* ============================================================
+     TOASTS
+  ============================================================ */
+  var toastStack = document.getElementById('toast-stack');
+  function showToast(msg){
+    var t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    toastStack.appendChild(t);
+    setTimeout(function(){
+      t.classList.add('leaving');
+      setTimeout(function(){ t.remove(); }, 220);
+    }, 3200);
+  }
+
+  /* ============================================================
+     DATA MODEL
+  ============================================================ */
+  var CATEGORY_COLORS = {
+    'Bahan Segar':      '#4A5AE8',
+    'Bahan Beku':       '#1DA463',
+    'Minuman':          '#E2932E',
+    'Makanan Kering':   '#8791F5',
+    'Kemasan':          '#E4483E'
+  };
+  var CATEGORIES = Object.keys(CATEGORY_COLORS);
+
+  function mkHistory(entries){
+    // entries: [ [daysAgo, label] ]
+    return entries.map(function(e){ return { date: addDays(NOW, -e[0]), label: e[1] }; });
+  }
+
+  var RAW_PRODUCTS = [
+    { name:'Daging Sapi Giling', category:'Bahan Segar', stock:12, minStock:20, maxStock:60, unit:'kg', price:135000, expiryDays:3, supplier:'CV Sumber Protein', sku:'BS-001', location:'Gudang Dingin A1', restockDaysAgo:6, weeklyUse:14,
+      history:[[6,'Restock 30 kg dari CV Sumber Protein'],[3,'Terjual 14 kg ke dapur produksi'],[1,'Penyesuaian stok manual -4 kg']] },
+    { name:'Ayam Fillet', category:'Bahan Segar', stock:18, minStock:25, maxStock:70, unit:'kg', price:65000, expiryDays:5, supplier:'CV Sumber Protein', sku:'BS-002', location:'Gudang Dingin A1', restockDaysAgo:5, weeklyUse:20,
+      history:[[5,'Restock 40 kg dari CV Sumber Protein'],[2,'Terjual 22 kg ke dapur produksi']] },
+    { name:'Udang Beku', category:'Bahan Beku', stock:40, minStock:15, maxStock:50, unit:'kg', price:98000, expiryDays:45, supplier:'PT Samudra Laut', sku:'BB-001', location:'Gudang Beku B2', restockDaysAgo:10, weeklyUse:8,
+      history:[[10,'Restock 25 kg dari PT Samudra Laut'],[4,'Terjual 9 kg']] },
+    { name:'Kentang Beku', category:'Bahan Beku', stock:85, minStock:30, maxStock:100, unit:'kg', price:32000, expiryDays:120, supplier:'PT Agro Nusantara', sku:'BB-002', location:'Gudang Beku B2', restockDaysAgo:14, weeklyUse:18,
+      history:[[14,'Restock 60 kg dari PT Agro Nusantara'],[7,'Terjual 20 kg']] },
+    { name:'Es Krim Vanila', category:'Bahan Beku', stock:22, minStock:20, maxStock:60, unit:'unit', price:45000, expiryDays:200, supplier:'PT Dairy Segar', sku:'BB-003', location:'Gudang Beku B3', restockDaysAgo:20, weeklyUse:6,
+      history:[[20,'Restock 30 unit dari PT Dairy Segar'],[9,'Terjual 8 unit']] },
+    { name:'Susu UHT Full Cream 1L', category:'Minuman', stock:150, minStock:60, maxStock:200, unit:'karton', price:18000, expiryDays:60, supplier:'PT Dairy Segar', sku:'MN-001', location:'Gudang Kering C1', restockDaysAgo:8, weeklyUse:35,
+      history:[[8,'Restock 100 karton dari PT Dairy Segar'],[3,'Terjual 40 karton']] },
+    { name:'Jus Jeruk Kemasan', category:'Minuman', stock:8, minStock:30, maxStock:90, unit:'karton', price:15000, expiryDays:10, supplier:'PT Segar Alam', sku:'MN-002', location:'Gudang Kering C1', restockDaysAgo:9, weeklyUse:25,
+      history:[[9,'Restock 35 karton dari PT Segar Alam'],[2,'Terjual 27 karton']] },
+    { name:'Air Mineral 600ml (dus)', category:'Minuman', stock:300, minStock:100, maxStock:400, unit:'dus', price:42000, expiryDays:365, supplier:'PT Sumber Jernih', sku:'MN-003', location:'Gudang Kering C2', restockDaysAgo:12, weeklyUse:60,
+      history:[[12,'Restock 200 dus dari PT Sumber Jernih'],[5,'Terjual 80 dus']] },
+    { name:'Kopi Bubuk Robusta 1kg', category:'Makanan Kering', stock:55, minStock:20, maxStock:80, unit:'kg', price:68000, expiryDays:300, supplier:'CV Kopi Nusantara', sku:'MK-001', location:'Gudang Kering D1', restockDaysAgo:15, weeklyUse:10,
+      history:[[15,'Restock 40 kg dari CV Kopi Nusantara'],[6,'Terjual 12 kg']] },
+    { name:'Beras Premium 5kg', category:'Makanan Kering', stock:6, minStock:25, maxStock:100, unit:'karung', price:78000, expiryDays:null, supplier:'CV Tani Makmur', sku:'MK-002', location:'Gudang Kering D1', restockDaysAgo:11, weeklyUse:15,
+      history:[[11,'Restock 30 karung dari CV Tani Makmur'],[4,'Terjual 24 karung'],[1,'Peringatan stok kritis dikirim ke manajer']] },
+    { name:'Tepung Terigu 1kg', category:'Makanan Kering', stock:90, minStock:30, maxStock:120, unit:'kg', price:12500, expiryDays:250, supplier:'PT Bogasari Mitra', sku:'MK-003', location:'Gudang Kering D2', restockDaysAgo:13, weeklyUse:18,
+      history:[[13,'Restock 60 kg dari PT Bogasari Mitra'],[6,'Terjual 22 kg']] },
+    { name:'Gula Pasir 1kg', category:'Makanan Kering', stock:110, minStock:40, maxStock:150, unit:'kg', price:15500, expiryDays:400, supplier:'PT Gula Sejahtera', sku:'MK-004', location:'Gudang Kering D2', restockDaysAgo:16, weeklyUse:16,
+      history:[[16,'Restock 70 kg dari PT Gula Sejahtera'],[7,'Terjual 20 kg']] },
+    { name:'Minyak Goreng 2L', category:'Makanan Kering', stock:14, minStock:30, maxStock:90, unit:'jerigen', price:34000, expiryDays:180, supplier:'PT Sawit Prima', sku:'MK-005', location:'Gudang Kering D3', restockDaysAgo:10, weeklyUse:20,
+      history:[[10,'Restock 45 jerigen dari PT Sawit Prima'],[3,'Terjual 31 jerigen']] },
+    { name:'Telur Ayam', category:'Bahan Segar', stock:20, minStock:25, maxStock:80, unit:'kg', price:27500, expiryDays:12, supplier:'CV Peternakan Jaya', sku:'BS-003', location:'Gudang Dingin A2', restockDaysAgo:7, weeklyUse:22,
+      history:[[7,'Restock 40 kg dari CV Peternakan Jaya'],[3,'Terjual 20 kg']] },
+    { name:'Sayur Bayam', category:'Bahan Segar', stock:5, minStock:20, maxStock:60, unit:'ikat', price:3500, expiryDays:2, supplier:'CV Sayur Segar', sku:'BS-004', location:'Gudang Dingin A3', restockDaysAgo:2, weeklyUse:30,
+      history:[[2,'Restock 30 ikat dari CV Sayur Segar'],[1,'Terjual 25 ikat']] },
+    { name:'Kotak Kemasan Makanan', category:'Kemasan', stock:500, minStock:200, maxStock:800, unit:'pcs', price:800, expiryDays:null, supplier:'PT Kemasan Rapi', sku:'KM-001', location:'Gudang Kering E1', restockDaysAgo:18, weeklyUse:80,
+      history:[[18,'Restock 400 pcs dari PT Kemasan Rapi'],[8,'Terpakai 180 pcs']] },
+    { name:'Sedotan Kertas', category:'Kemasan', stock:40, minStock:50, maxStock:200, unit:'pack', price:12000, expiryDays:null, supplier:'PT Kemasan Rapi', sku:'KM-002', location:'Gudang Kering E1', restockDaysAgo:9, weeklyUse:22,
+      history:[[9,'Restock 80 pack dari PT Kemasan Rapi'],[3,'Terpakai 60 pack']] },
+    { name:'Tas Kresek Belanja', category:'Kemasan', stock:320, minStock:100, maxStock:500, unit:'pack', price:500, expiryDays:null, supplier:'PT Kemasan Rapi', sku:'KM-003', location:'Gudang Kering E2', restockDaysAgo:17, weeklyUse:70,
+      history:[[17,'Restock 250 pack dari PT Kemasan Rapi'],[7,'Terpakai 130 pack']] }
+  ];
+
+  var PRODUCTS = RAW_PRODUCTS.map(function(p, i){
+    return {
+      id: 'p' + (i+1),
+      name: p.name,
+      category: p.category,
+      stock: p.stock,
+      minStock: p.minStock,
+      maxStock: p.maxStock,
+      unit: p.unit,
+      price: p.price,
+      expiryDate: (p.expiryDays == null) ? null : addDays(NOW, p.expiryDays),
+      supplier: p.supplier,
+      sku: p.sku,
+      location: p.location,
+      lastRestock: addDays(NOW, -p.restockDaysAgo),
+      weeklyUse: p.weeklyUse,
+      history: mkHistory(p.history)
+    };
+  });
+
+  function getStatus(p){
+    var expDays = p.expiryDate ? daysUntil(p.expiryDate) : null;
+    var expiringSoon = expDays !== null && expDays <= 14;
+    var lowStock = p.stock <= p.minStock;
+    var nearLow = !lowStock && p.stock <= p.minStock * 1.6;
+    var key = 'good', label = 'Stok Aman';
+    if (lowStock || (expiringSoon && expDays <= 3)){
+      key = 'danger'; label = lowStock ? 'Stok Kritis' : 'Segera Kedaluwarsa';
+    } else if (nearLow || expiringSoon){
+      key = 'warn'; label = nearLow ? 'Stok Menipis' : 'Akan Kedaluwarsa';
+    }
+    return { key:key, label:label, expDays:expDays, expiringSoon:expiringSoon, lowStock:lowStock };
+  }
+
+  /* ============================================================
+     ACTIVITIES (dashboard feed)
+  ============================================================ */
+  var ACTIVITIES = [
+    { time:'12 menit lalu', text:'Restock 30 kg Daging Sapi Giling diterima', category:'Bahan Segar', user:'Rina (Gudang)', status:'good' },
+    { time:'48 menit lalu', text:'Stok Sayur Bayam turun di bawah ambang minimum', category:'Bahan Segar', user:'Sistem', status:'danger' },
+    { time:'2 jam lalu', text:'Jus Jeruk Kemasan mendekati tanggal kedaluwarsa (10 hari)', category:'Minuman', user:'Sistem', status:'warn' },
+    { time:'3 jam lalu', text:'150 karton Susu UHT dikirim ke Cabang Sanur', category:'Minuman', user:'Budi (Logistik)', status:'good' },
+    { time:'5 jam lalu', text:'Beras Premium 5kg mencapai stok kritis', category:'Makanan Kering', user:'Sistem', status:'danger' },
+    { time:'Kemarin, 16:40', text:'Penyesuaian stok manual pada Daging Sapi Giling (-4 kg)', category:'Bahan Segar', user:'Rina (Gudang)', status:'warn' },
+    { time:'Kemarin, 14:05', text:'Restock 250 pack Tas Kresek Belanja diterima', category:'Kemasan', user:'Andi (Gudang)', status:'good' },
+    { time:'Kemarin, 09:22', text:'Minyak Goreng 2L turun di bawah ambang minimum', category:'Makanan Kering', user:'Sistem', status:'danger' },
+    { time:'2 hari lalu', text:'Pemeriksaan mutu Udang Beku selesai, tidak ada masalah', category:'Bahan Beku', user:'QC Tim', status:'good' },
+    { time:'2 hari lalu', text:'Ayam Fillet mendekati batas stok minimum', category:'Bahan Segar', user:'Sistem', status:'warn' },
+    { time:'3 hari lalu', text:'Restock 40 kg Tepung Terigu diterima dari PT Bogasari Mitra', category:'Makanan Kering', user:'Andi (Gudang)', status:'good' },
+    { time:'4 hari lalu', text:'Sedotan Kertas turun di bawah ambang minimum', category:'Kemasan', user:'Sistem', status:'danger' },
+    { time:'5 hari lalu', text:'Audit stok bulanan gudang dingin selesai', category:'Bahan Segar', user:'Rina (Gudang)', status:'good' },
+    { time:'6 hari lalu', text:'Telur Ayam mendekati batas stok minimum', category:'Bahan Segar', user:'Sistem', status:'warn' }
+  ];
+
+  /* ============================================================
+     PERIOD-DEPENDENT STATS (for demo trend pills / historical feel)
+  ============================================================ */
+  function computeLiveStats(){
+    var total = 0, low = 0, expiring = 0;
+    PRODUCTS.forEach(function(p){
+      total += p.stock;
+      var st = getStatus(p);
+      if (st.key !== 'good') low++;
+      if (st.expiringSoon) expiring++;
+    });
+    return { total:total, low:low, expiring:expiring, waste:22 };
+  }
+  var LIVE = computeLiveStats();
+  var PERIOD_STATS = {
+    'Juli':      { total: Math.round(LIVE.total*0.88), low: LIVE.low+4, expiring: LIVE.expiring+3, waste:12 },
+    'Agustus':   { total: Math.round(LIVE.total*0.94), low: LIVE.low+2, expiring: LIVE.expiring+1, waste:17 },
+    'September': { total: LIVE.total, low: LIVE.low, expiring: LIVE.expiring, waste: LIVE.waste }
+  };
+  var PERIOD_PREV = { 'Juli':null, 'Agustus':'Juli', 'September':'Agustus' };
+
+  /* ============================================================
+     STATE
+  ============================================================ */
+  var state = {
+    view: 'dashboard',
+    period: 'September',
+    catPeriod: 'September',
+    activityFilter: { good:true, warn:true, danger:true },
+    activitySearch: '',
+    inventorySearch: '',
+    activeProductId: null,
+    activeTab: 'overview',
+    pendingDelta: 0
+  };
+
+  /* ============================================================
+     GENERIC DROPDOWN HANDLING
+  ============================================================ */
+  var allPanels = [];
+  function registerDropdown(btn, panel){
+    allPanels.push(panel);
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var willOpen = !panel.classList.contains('open');
+      closeAllDropdowns();
+      if (willOpen) panel.classList.add('open');
+    });
+    panel.addEventListener('click', function(e){ e.stopPropagation(); });
+  }
+  function closeAllDropdowns(){
+    allPanels.forEach(function(p){ p.classList.remove('open'); });
+  }
+  document.addEventListener('click', closeAllDropdowns);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape'){ closeAllDropdowns(); closeInfoPopover(); closePopover(); closeDrawer(); }
+  });
+
+  /* ============================================================
+     SIDEBAR / NAV
+  ============================================================ */
+  var sidebar = document.getElementById('sidebar');
+  var sidebarOverlay = document.getElementById('sidebar-overlay');
+  var hamburgerBtn = document.getElementById('hamburger-btn');
+
+  function openSidebar(){
+    sidebar.classList.add('open');
+    sidebarOverlay.classList.add('visible');
+    document.body.classList.add('panel-open');
+  }
+  function closeSidebar(){
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('visible');
+    document.body.classList.remove('panel-open');
+  }
+  hamburgerBtn.addEventListener('click', openSidebar);
+  sidebarOverlay.addEventListener('click', closeSidebar);
+
+  var viewDashboard = document.getElementById('view-dashboard');
+  var viewInventory = document.getElementById('view-inventory');
+  var navItems = document.querySelectorAll('.nav-item');
+
+  function switchView(view){
+    state.view = view;
+    viewDashboard.hidden = (view !== 'dashboard');
+    viewInventory.hidden = (view !== 'inventory');
+    navItems.forEach(function(btn){
+      var v = btn.getAttribute('data-view');
+      btn.classList.toggle('active', v === view && v !== 'toast');
+    });
+    if (view === 'inventory') renderProductList();
+    window.scrollTo({ top:0, behavior:'smooth' });
+    closeSidebar();
+  }
+
+  navItems.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var view = btn.getAttribute('data-view');
+      if (view === 'toast'){
+        showToast(btn.getAttribute('data-toast') || 'Fitur ini belum tersedia di prototipe ini.');
+        return;
+      }
+      switchView(view);
+    });
+  });
+
+  /* generic stub toasts on any [data-toast] not already handled (stat arrows, etc.) */
+  document.addEventListener('click', function(e){
+    var el = e.target.closest('[data-toast]');
+    if (el && !el.classList.contains('nav-item')){
+      showToast(el.getAttribute('data-toast'));
+    }
+  });
+
+  document.getElementById('btn-upgrade').addEventListener('click', function(){
+    showToast('Terima kasih atas minat Anda! Tim kami akan segera menghubungi Anda soal paket Premium.');
+  });
+  document.getElementById('btn-new-order').addEventListener('click', function(){
+    showToast('Pembaruan stok massal belum tersedia. Buka sebuah produk untuk memperbarui stoknya.');
+    switchView('inventory');
+  });
+
+  /* ============================================================
+     TOPBAR: user menu / notifications / global search
+  ============================================================ */
+  registerDropdown(document.getElementById('btn-user'), document.getElementById('user-menu'));
+  document.querySelectorAll('#user-menu .dropdown-item').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      closeAllDropdowns();
+      showToast(btn.textContent.trim() + ' — belum tersedia di prototipe ini.');
+    });
+  });
+
+  var notifBtn = document.getElementById('btn-notif');
+  var notifPanel = document.getElementById('notif-panel');
+  var notifDot = document.getElementById('notif-dot');
+  registerDropdown(notifBtn, notifPanel);
+
+  function renderNotifications(){
+    var risky = PRODUCTS.map(function(p){ return { p:p, st:getStatus(p) }; })
+      .filter(function(x){ return x.st.key !== 'good'; })
+      .sort(function(a,b){
+        var rank = { danger:0, warn:1, good:2 };
+        return rank[a.st.key] - rank[b.st.key];
+      })
+      .slice(0, 6);
+
+    if (!risky.length){
+      notifPanel.innerHTML = '<div class="dropdown-empty">Tidak ada notifikasi baru.</div>';
+      notifDot.style.display = 'none';
+      return;
+    }
+    notifDot.style.display = risky.some(function(x){ return x.st.key === 'danger'; }) ? 'block' : 'none';
+
+    var html = '<div class="dropdown-title">' + risky.length + ' peringatan aktif</div>';
+    risky.forEach(function(x){
+      var icon = x.st.key === 'danger' ? '🔴' : '🟠';
+      var desc = x.st.lowStock
+        ? (x.p.stock + ' ' + x.p.unit + ' tersisa')
+        : (x.st.expDays + ' hari lagi kedaluwarsa');
+      html += '<button class="dropdown-item notif-item" data-pid="' + x.p.id + '">' +
+        icon + ' <span style="flex:1; text-align:left;">' + escapeHtml(x.p.name) + '<br>' +
+        '<span style="color:var(--ink-soft); font-size:11.5px;">' + desc + '</span></span></button>';
+    });
+    notifPanel.innerHTML = html;
+    notifPanel.querySelectorAll('.notif-item').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        closeAllDropdowns();
+        switchView('inventory');
+        openDrawer(btn.getAttribute('data-pid'));
+      });
+    });
+  }
+
+  var globalSearch = document.getElementById('global-search');
+  globalSearch.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){
+      var q = globalSearch.value.trim();
+      switchView('inventory');
+      var input = document.getElementById('search-input');
+      input.value = q;
+      state.inventorySearch = q;
+      renderProductList();
+      input.focus();
+    }
+  });
+
+  /* ============================================================
+     STAT CARDS
+  ============================================================ */
+  function trendPill(el, cmpEl, current, prevKey, metricGoodWhenUp){
+    var prevVal = prevKey ? PERIOD_STATS[prevKey] : null;
+    if (!prevVal){
+      el.innerHTML = '';
+      cmpEl.textContent = 'Periode awal data';
+      return;
+    }
+    return null; // placeholder (not used directly, see callers)
+  }
+
+  function buildTrend(elId, cmpId, currentVal, prevVal, goodWhenUp, prevLabel){
+    var el = document.getElementById(elId);
+    var cmp = document.getElementById(cmpId);
+    if (prevVal == null){
+      el.innerHTML = '';
+      cmp.textContent = 'Periode awal data yang tercatat';
+      return;
+    }
+    var diff = currentVal - prevVal;
+    var pct = prevVal !== 0 ? (diff/prevVal*100) : 0;
+    var up = diff >= 0;
+    var isGoodDirection = up === goodWhenUp;
+    el.className = 'trend-pill ' + (isGoodDirection ? 'up-good' : 'up-bad');
+    var arrow = up
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>';
+    el.innerHTML = arrow + Math.abs(pct).toFixed(1) + '%';
+    cmp.textContent = 'vs ' + prevLabel;
+  }
+
+  function pulseValue(el){
+    el.classList.remove('pulse');
+    void el.offsetWidth;
+    el.classList.add('pulse');
+  }
+
+  function renderStatCards(){
+    var cur = PERIOD_STATS[state.period];
+    var prevKey = PERIOD_PREV[state.period];
+    var prev = prevKey ? PERIOD_STATS[prevKey] : null;
+
+    var valTotal = document.getElementById('val-total');
+    var valLow = document.getElementById('val-low');
+    var valExpiring = document.getElementById('val-expiring');
+    var valWaste = document.getElementById('val-waste');
+
+    valTotal.textContent = fmtNum(cur.total) + ' unit';
+    valLow.textContent = cur.low;
+    valExpiring.textContent = cur.expiring;
+    valWaste.textContent = cur.waste + '%';
+    [valTotal, valLow, valExpiring, valWaste].forEach(pulseValue);
+
+    buildTrend('trend-total', 'cmp-total', cur.total, prev ? prev.total : null, true, prevKey);
+    buildTrend('trend-low', 'cmp-low', cur.low, prev ? prev.low : null, false, prevKey);
+    buildTrend('trend-expiring', 'cmp-expiring', cur.expiring, prev ? prev.expiring : null, false, prevKey);
+    buildTrend('trend-waste', 'cmp-waste', cur.waste, prev ? prev.waste : null, true, prevKey);
+  }
+
+  /* period dropdowns */
+  var periodBtn = document.getElementById('period-btn');
+  var periodMenu = document.getElementById('period-menu');
+  var periodLabel = document.getElementById('period-label');
+  registerDropdown(periodBtn, periodMenu);
+  periodMenu.querySelectorAll('.dropdown-item').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      state.period = btn.getAttribute('data-period');
+      periodLabel.textContent = state.period;
+      closeAllDropdowns();
+      renderStatCards();
+    });
+  });
+
+  var catPeriodBtn = document.getElementById('cat-period-btn');
+  var catPeriodMenu = document.getElementById('cat-period-menu');
+  var catPeriodLabel = document.getElementById('cat-period-label');
+  registerDropdown(catPeriodBtn, catPeriodMenu);
+  catPeriodMenu.querySelectorAll('.dropdown-item').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      state.catPeriod = btn.getAttribute('data-period');
+      catPeriodLabel.textContent = state.catPeriod;
+      closeAllDropdowns();
+      renderCategoryChart();
+    });
+  });
+
+  /* ============================================================
+     CHART: STOK PER KATEGORI
+  ============================================================ */
+  var categoryChart = null;
+  var CAT_PERIOD_MULT = { 'Juli':0.88, 'Agustus':0.94, 'September':1 };
+
+  function categoryTotals(mult){
+    return CATEGORIES.map(function(cat){
+      var sum = 0;
+      PRODUCTS.forEach(function(p){ if (p.category === cat) sum += p.stock; });
+      return Math.round(sum * mult);
+    });
+  }
+
+  function renderCategoryChart(){
+    var ctx = document.getElementById('chart-category').getContext('2d');
+    var data = categoryTotals(CAT_PERIOD_MULT[state.catPeriod]);
+    if (categoryChart){
+      categoryChart.data.datasets[0].data = data;
+      categoryChart.update();
+      return;
+    }
+    categoryChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: CATEGORIES,
+        datasets: [{
+          data: data,
+          backgroundColor: CATEGORIES.map(function(c){ return CATEGORY_COLORS[c]; }),
+          borderRadius: 6,
+          maxBarThickness: 40
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display:false }, tooltip: {
+          callbacks: { label: function(ctx){ return fmtNum(ctx.parsed.y) + ' unit'; } }
+        } },
+        scales: {
+          x: { grid: { display:false }, ticks: { font:{ size:11 }, color:'#8B90A6' } },
+          y: { beginAtZero:true, grid: { color:'#E8E9F1' }, ticks: { font:{ size:11 }, color:'#8B90A6' } }
+        }
+      }
+    });
+  }
+
+  /* ============================================================
+     STATUS DISTRIBUTION
+  ============================================================ */
+  var statusRowsEl = document.getElementById('status-rows');
+  var statusTotalEl = document.getElementById('status-total-num');
+  var STATUS_META = {
+    good:   { label:'Stok Aman',    color:'var(--success)' },
+    warn:   { label:'Stok Menipis', color:'var(--warn)' },
+    danger: { label:'Stok Kritis',  color:'var(--danger)' }
+  };
+
+  function renderStatusDistribution(){
+    var buckets = { good:[], warn:[], danger:[] };
+    PRODUCTS.forEach(function(p){ buckets[getStatus(p).key].push(p); });
+    var total = PRODUCTS.length;
+    statusTotalEl.textContent = total;
+
+    var html = '';
+    ['good','warn','danger'].forEach(function(key){
+      var count = buckets[key].length;
+      var pct = total ? Math.round(count/total*100) : 0;
+      html += '<div class="status-row" data-status="' + key + '">' +
+        '<div class="status-row-top"><span class="lbl">' + STATUS_META[key].label + '</span>' +
+        '<span class="num">' + count + ' produk</span></div>' +
+        '<div class="status-track"><div class="status-fill" style="width:' + pct + '%; background:' + STATUS_META[key].color + ';"></div></div>' +
+        '</div>';
+    });
+    statusRowsEl.innerHTML = html;
+
+    statusRowsEl.querySelectorAll('.status-row').forEach(function(row){
+      row.addEventListener('click', function(e){
+        e.stopPropagation();
+        var key = row.getAttribute('data-status');
+        toggleInfoPopover(row, key, buckets[key]);
+      });
+    });
+  }
+
+  var infoPopoverEl = null;
+  function closeInfoPopover(){
+    if (infoPopoverEl){ infoPopoverEl.remove(); infoPopoverEl = null; }
+  }
+  function toggleInfoPopover(anchor, key, items){
+    if (infoPopoverEl && infoPopoverEl.dataset.key === key){ closeInfoPopover(); return; }
+    closeInfoPopover();
+    var totalValue = items.reduce(function(s,p){ return s + p.stock*p.price; }, 0);
+    var avgStock = items.length ? Math.round(items.reduce(function(s,p){ return s+p.stock; },0)/items.length) : 0;
+    var card = document.createElement('div');
+    card.className = 'info-card';
+    card.dataset.key = key;
+    card.innerHTML = '<div class="ic-title">' + STATUS_META[key].label + '</div>' +
+      '<div class="ic-line"><span>Jumlah produk</span><b>' + items.length + '</b></div>' +
+      '<div class="ic-line"><span>Rata-rata stok</span><b>' + avgStock + '</b></div>' +
+      '<div class="ic-line"><span>Total nilai</span><b>' + fmtRp(totalValue) + '</b></div>';
+    anchor.style.position = 'relative';
+    anchor.appendChild(card);
+    card.style.left = '0';
+    card.style.top = 'calc(100% + 6px)';
+    infoPopoverEl = card;
+    setTimeout(function(){
+      document.addEventListener('click', function handler(ev){
+        if (!card.contains(ev.target)){ closeInfoPopover(); document.removeEventListener('click', handler); }
+      });
+    }, 0);
+  }
+
+  /* ============================================================
+     GAUGE: NILAI STOK
+  ============================================================ */
+  var gaugeChart = null;
+  function renderValueGauge(){
+    var byCat = {};
+    CATEGORIES.forEach(function(c){ byCat[c] = 0; });
+    var totalUnits = 0, totalValue = 0;
+    PRODUCTS.forEach(function(p){
+      byCat[p.category] += p.stock * p.price;
+      totalUnits += p.stock;
+      totalValue += p.stock * p.price;
+    });
+
+    document.getElementById('gauge-total-value').textContent = fmtRp(totalValue);
+    document.getElementById('gauge-center-units').textContent = fmtNum(totalUnits);
+
+    var data = CATEGORIES.map(function(c){ return byCat[c]; });
+    var ctx = document.getElementById('chart-value-gauge').getContext('2d');
+    if (gaugeChart){
+      gaugeChart.data.datasets[0].data = data;
+      gaugeChart.update();
+    } else {
+      gaugeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: CATEGORIES,
+          datasets: [{
+            data: data,
+            backgroundColor: CATEGORIES.map(function(c){ return CATEGORY_COLORS[c]; }),
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '72%',
+          plugins: { legend: { display:false }, tooltip: {
+            callbacks: { label: function(ctx){ return ctx.label + ': ' + fmtRp(ctx.parsed); } }
+          } }
+        }
+      });
+    }
+
+    var legend = document.getElementById('gauge-legend');
+    legend.innerHTML = CATEGORIES.map(function(c){
+      return '<div class="gl-row"><span class="gl-dot" style="background:' + CATEGORY_COLORS[c] + ';"></span>' +
+        '<span class="gl-name">' + c + '</span><span class="gl-val">' + fmtRp(byCat[c]) + '</span></div>';
+    }).join('');
+  }
+
+  /* ============================================================
+     ACTIVITY TABLE
+  ============================================================ */
+  var activityTbody = document.getElementById('activity-tbody');
+  var activitySearchInput = document.getElementById('activity-search-input');
+  var activityFilterBtn = document.getElementById('activity-filter-btn');
+  var activityFilterMenu = document.getElementById('activity-filter-menu');
+  registerDropdown(activityFilterBtn, activityFilterMenu);
+
+  function renderActivity(){
+    var q = state.activitySearch.toLowerCase();
+    var rows = ACTIVITIES.filter(function(a){
+      if (!state.activityFilter[a.status]) return false;
+      if (q && a.text.toLowerCase().indexOf(q) === -1 && a.category.toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+
+    if (!rows.length){
+      activityTbody.innerHTML = '<tr><td colspan="5" class="activity-empty">Tidak ada aktivitas yang cocok.</td></tr>';
+      return;
+    }
+
+    var pillLabel = { good:'Selesai', warn:'Perlu Perhatian', danger:'Peringatan' };
+    activityTbody.innerHTML = rows.map(function(a){
+      return '<tr>' +
+        '<td class="act-time" data-label="Waktu">' + a.time + '</td>' +
+        '<td class="act-text" data-label="Aktivitas">' + escapeHtml(a.text) + '</td>' +
+        '<td class="act-cat" data-label="Kategori">' + escapeHtml(a.category) + '</td>' +
+        '<td class="act-user" data-label="User">' + escapeHtml(a.user) + '</td>' +
+        '<td data-label="Status"><span class="pill ' + a.status + '">' + pillLabel[a.status] + '</span></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  activitySearchInput.addEventListener('input', function(){
+    state.activitySearch = activitySearchInput.value.trim();
+    renderActivity();
+  });
+  activityFilterMenu.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+    cb.addEventListener('change', function(){
+      state.activityFilter[cb.value] = cb.checked;
+      renderActivity();
+    });
+  });
+
+  /* ============================================================
+     INVENTORY LIST
+  ============================================================ */
+  var searchInput = document.getElementById('search-input');
+  var searchClear = document.getElementById('search-clear');
+  var searchMeta = document.getElementById('search-meta');
+  var productListEl = document.getElementById('product-list');
+
+  function matchesQuery(p, q){
+    if (!q) return true;
+    q = q.toLowerCase();
+    return p.name.toLowerCase().indexOf(q) !== -1 || p.category.toLowerCase().indexOf(q) !== -1;
+  }
+
+  function renderProductList(){
+    var q = state.inventorySearch;
+    searchClear.classList.toggle('visible', !!q);
+    var filtered = PRODUCTS.filter(function(p){ return matchesQuery(p, q); });
+
+    searchMeta.textContent = q
+      ? (filtered.length + ' dari ' + PRODUCTS.length + ' produk ditemukan untuk "' + q + '"')
+      : (PRODUCTS.length + ' produk dipantau');
+
+    if (!filtered.length){
+      productListEl.innerHTML = '<div class="empty-state">Tidak ada produk yang cocok dengan pencarian Anda.</div>';
+      return;
+    }
+
+    productListEl.innerHTML = filtered.map(function(p){
+      var st = getStatus(p);
+      var expBadge = '';
+      if (p.expiryDate && st.expiringSoon){
+        expBadge = '<span class="badge ' + (st.expDays <= 3 ? 'danger' : 'warn') + '">Kedaluwarsa ' + Math.max(st.expDays,0) + 'h</span>';
+      }
+      var flag = '';
+      if (st.key !== 'good'){
+        flag = '<button class="warn-flag" data-flag="' + p.id + '" aria-label="Peringatan">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></button>';
+      }
+      return '<div class="product-row" tabindex="0" data-pid="' + p.id + '">' +
+        '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
+        '<div class="product-category">' + escapeHtml(p.category) + '</div>' +
+        '<div class="product-stock">' + fmtNum(p.stock) + ' ' + p.unit + '</div>' +
+        '<div class="status-cell"><span class="badge ' + st.key + '">' + st.label + '</span>' + expBadge + flag + '</div>' +
+        '<div class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>' +
+        '</div>';
+    }).join('');
+
+    productListEl.querySelectorAll('.product-row').forEach(function(row){
+      row.addEventListener('click', function(e){
+        if (e.target.closest('.warn-flag')) return;
+        openDrawer(row.getAttribute('data-pid'));
+      });
+      row.addEventListener('keydown', function(e){
+        if (e.key === 'Enter') openDrawer(row.getAttribute('data-pid'));
+      });
+    });
+    productListEl.querySelectorAll('.warn-flag').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        var pid = btn.getAttribute('data-flag');
+        var p = PRODUCTS.find(function(x){ return x.id === pid; });
+        var st = getStatus(p);
+        var msg = st.lowStock
+          ? (p.name + ' tersisa ' + p.stock + ' ' + p.unit + ', di bawah minimum ' + p.minStock + ' ' + p.unit + '.')
+          : (p.name + ' akan kedaluwarsa dalam ' + st.expDays + ' hari.');
+        togglePopover(btn, msg);
+      });
+    });
+  }
+
+  var popoverEl = null;
+  function closePopover(){ if (popoverEl){ popoverEl.remove(); popoverEl = null; } }
+  function togglePopover(anchor, msg){
+    if (popoverEl && popoverEl._anchor === anchor){ closePopover(); return; }
+    closePopover();
+    var pop = document.createElement('div');
+    pop.className = 'popover';
+    pop.textContent = msg;
+    pop._anchor = anchor;
+    document.body.appendChild(pop);
+    var rect = anchor.getBoundingClientRect();
+    pop.style.left = clamp(rect.left - 100, 8, window.innerWidth - 248) + 'px';
+    pop.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+    popoverEl = pop;
+    setTimeout(function(){
+      document.addEventListener('click', function handler(ev){
+        if (ev.target !== anchor && !pop.contains(ev.target)){ closePopover(); document.removeEventListener('click', handler); }
+      });
+    }, 0);
+  }
+
+  searchInput.addEventListener('input', function(){
+    state.inventorySearch = searchInput.value.trim();
+    closePopover();
+    renderProductList();
+  });
+  searchClear.addEventListener('click', function(){
+    searchInput.value = '';
+    state.inventorySearch = '';
+    renderProductList();
+    searchInput.focus();
+  });
+
+  /* ============================================================
+     DRAWER (product detail)
+  ============================================================ */
+  var overlay = document.getElementById('overlay');
+  var drawer = document.getElementById('drawer');
+  var drawerTitle = document.getElementById('drawer-title');
+  var drawerCategory = document.getElementById('drawer-category');
+  var drawerBody = document.getElementById('drawer-body');
+  var drawerTabs = document.querySelectorAll('.drawer-tab');
+  var drawerClose = document.getElementById('drawer-close');
+
+  function getActiveProduct(){
+    return PRODUCTS.find(function(p){ return p.id === state.activeProductId; });
+  }
+
+  function openDrawer(pid){
+    state.activeProductId = pid;
+    state.activeTab = 'overview';
+    state.pendingDelta = 0;
+    closePopover(); closeInfoPopover();
+    var p = getActiveProduct();
+    if (!p) return;
+    drawerTitle.textContent = p.name;
+    drawerCategory.textContent = p.category + ' · SKU ' + p.sku;
+    drawerTabs.forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab') === 'overview'); });
+    renderDrawerTab();
+    drawer.classList.add('open');
+    overlay.classList.add('visible');
+    document.body.classList.add('panel-open');
+  }
+
+  function closeDrawer(){
+    drawer.classList.remove('open');
+    overlay.classList.remove('visible');
+    document.body.classList.remove('panel-open');
+  }
+  drawerClose.addEventListener('click', closeDrawer);
+  overlay.addEventListener('click', closeDrawer);
+
+  drawerTabs.forEach(function(tab){
+    tab.addEventListener('click', function(){
+      state.activeTab = tab.getAttribute('data-tab');
+      drawerTabs.forEach(function(t){ t.classList.toggle('active', t === tab); });
+      renderDrawerTab();
+    });
+  });
+
+  function renderDrawerTab(){
+    var p = getActiveProduct();
+    if (!p) return;
+    if (state.activeTab === 'overview') drawerBody.innerHTML = drawerOverviewHtml(p);
+    else if (state.activeTab === 'trend') drawerBody.innerHTML = drawerTrendHtml(p);
+    else drawerBody.innerHTML = drawerDetailHtml(p);
+    bindDrawerTabEvents(p);
+  }
+
+  function drawerOverviewHtml(p){
+    var st = getStatus(p);
+    var totalValue = p.stock * p.price;
+    var alert = '';
+    if (st.key === 'danger'){
+      var reason = st.lowStock
+        ? ('Stok tersisa ' + p.stock + ' ' + p.unit + ', di bawah minimum ' + p.minStock + ' ' + p.unit + '. Segera lakukan restock.')
+        : ('Produk ini akan kedaluwarsa dalam ' + st.expDays + ' hari. Prioritaskan untuk digunakan atau didiskon.');
+      alert = '<div class="alert-box" id="drawer-alert">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>' +
+        '<span>' + reason + '</span></div>';
+    } else if (st.key === 'warn'){
+      alert = '<div class="risk-note"><strong>Perhatian:</strong> ' +
+        (st.expiringSoon ? ('kedaluwarsa dalam ' + st.expDays + ' hari — pertimbangkan untuk memprioritaskan penggunaan.')
+          : ('stok mendekati ambang minimum (' + p.minStock + ' ' + p.unit + ').')) + '</div>';
+    } else {
+      alert = '<div class="risk-note">Stok dalam kondisi <strong>aman</strong>, tidak ada tindakan mendesak yang diperlukan.</div>';
+    }
+
+    return '' +
+      '<div class="fact-grid">' +
+        '<div class="fact"><div class="fact-label">Stok Saat Ini</div><div class="fact-value" id="fact-stock">' + fmtNum(p.stock) + ' ' + p.unit + '</div></div>' +
+        '<div class="fact"><div class="fact-label">Stok Minimum</div><div class="fact-value">' + fmtNum(p.minStock) + ' ' + p.unit + '</div></div>' +
+        '<div class="fact"><div class="fact-label">Harga Satuan</div><div class="fact-value">' + fmtRp(p.price) + '</div></div>' +
+        '<div class="fact"><div class="fact-label">Nilai Stok</div><div class="fact-value" id="fact-value">' + fmtRp(totalValue) + '</div></div>' +
+      '</div>' +
+      '<div class="status-block">' + alert + '</div>' +
+      '<div style="font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:8px;">Sesuaikan Stok</div>' +
+      '<div class="stepper">' +
+        '<button id="step-minus" aria-label="Kurangi">−</button>' +
+        '<input id="step-input" type="number" value="0">' +
+        '<button id="step-plus" aria-label="Tambah">+</button>' +
+        '<span style="font-size:12.5px; color:var(--ink-soft);">' + p.unit + '</span>' +
+      '</div>' +
+      '<div class="action-row">' +
+        '<button class="btn btn-primary" id="btn-save-stock">Simpan Perubahan</button>' +
+        '<button class="btn btn-secondary" id="btn-cancel-stock">Batal</button>' +
+        '<button class="btn btn-ghost" id="btn-mark-used">Tandai 1 ' + p.unit + ' Terpakai</button>' +
+        '<div class="used-flash" id="used-flash">✓ Ditandai terpakai</div>' +
+      '</div>';
+  }
+
+  function drawerTrendHtml(p){
+    var st = getStatus(p);
+    var weeklyUse = p.weeklyUse;
+    var daysLeft = weeklyUse ? Math.round(p.stock / (weeklyUse/7)) : null;
+    var turnover = weeklyUse ? (weeklyUse*4.3 / Math.max(p.stock,1)).toFixed(1) : '—';
+    var projected = daysLeft != null ? fmtDate(addDays(NOW, daysLeft)) : '—';
+
+    var timelineHtml = p.history.slice().sort(function(a,b){ return b.date - a.date; }).map(function(h, idx){
+      return '<li class="' + (idx === 0 ? 'is-new' : '') + '"><span class="t-date">' + fmtDate(h.date) + '</span>' + escapeHtml(h.label) + '</li>';
+    }).join('');
+
+    return '' +
+      '<div class="mini-stats">' +
+        '<div class="mini-stat"><div class="mini-stat-label">Rata-rata Terjual/Minggu</div><div class="mini-stat-value">' + fmtNum(weeklyUse) + ' ' + p.unit + '</div></div>' +
+        '<div class="mini-stat"><div class="mini-stat-label">Sisa Hari Stok</div><div class="mini-stat-value ' + (daysLeft !== null && daysLeft <= 5 ? 'at-risk' : '') + '">' + (daysLeft != null ? daysLeft + ' hari' : '—') + '</div></div>' +
+      '</div>' +
+      '<div class="detail-table">' +
+        '<div class="detail-row"><dt>Perputaran Stok / bulan</dt><dd class="mono">' + turnover + 'x</dd></div>' +
+        '<div class="detail-row"><dt>Proyeksi Stok Habis</dt><dd class="mono">' + projected + '</dd></div>' +
+        '<div class="detail-row"><dt>Status Saat Ini</dt><dd><span class="badge ' + st.key + '">' + st.label + '</span></dd></div>' +
+      '</div>' +
+      '<div style="font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:10px;">Riwayat Terbaru</div>' +
+      '<ul class="timeline">' + timelineHtml + '</ul>';
+  }
+
+  function drawerDetailHtml(p){
+    var timelineHtml = p.history.slice().sort(function(a,b){ return b.date - a.date; }).map(function(h, idx){
+      return '<li class="' + (idx === 0 ? 'is-new' : '') + '"><span class="t-date">' + fmtDate(h.date) + '</span>' + escapeHtml(h.label) + '</li>';
+    }).join('');
+    return '' +
+      '<div class="detail-table">' +
+        '<div class="detail-row"><dt>SKU</dt><dd class="mono">' + p.sku + '</dd></div>' +
+        '<div class="detail-row"><dt>Kategori</dt><dd>' + escapeHtml(p.category) + '</dd></div>' +
+        '<div class="detail-row"><dt>Pemasok</dt><dd>' + escapeHtml(p.supplier) + '</dd></div>' +
+        '<div class="detail-row"><dt>Lokasi Gudang</dt><dd>' + escapeHtml(p.location) + '</dd></div>' +
+        '<div class="detail-row"><dt>Tanggal Kedaluwarsa</dt><dd>' + (p.expiryDate ? fmtDate(p.expiryDate) : 'Tidak berlaku') + '</dd></div>' +
+        '<div class="detail-row"><dt>Restock Terakhir</dt><dd>' + fmtDate(p.lastRestock) + '</dd></div>' +
+      '</div>' +
+      '<div style="font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:10px;">Riwayat Produk</div>' +
+      '<ul class="timeline">' + timelineHtml + '</ul>';
+  }
+
+  function bindDrawerTabEvents(p){
+    if (state.activeTab !== 'overview') return;
+
+    var stepInput = document.getElementById('step-input');
+    var stepMinus = document.getElementById('step-minus');
+    var stepPlus = document.getElementById('step-plus');
+    var saveBtn = document.getElementById('btn-save-stock');
+    var cancelBtn = document.getElementById('btn-cancel-stock');
+    var usedBtn = document.getElementById('btn-mark-used');
+    var usedFlash = document.getElementById('used-flash');
+
+    function syncStepInput(){ stepInput.value = state.pendingDelta; }
+    syncStepInput();
+
+    stepMinus.addEventListener('click', function(){
+      state.pendingDelta = Math.max(state.pendingDelta - 1, -p.stock);
+      syncStepInput();
+    });
+    stepPlus.addEventListener('click', function(){
+      state.pendingDelta = Math.min(state.pendingDelta + 1, p.maxStock - p.stock);
+      syncStepInput();
+    });
+    stepInput.addEventListener('change', function(){
+      var v = parseInt(stepInput.value, 10);
+      if (isNaN(v)) v = 0;
+      state.pendingDelta = clamp(v, -p.stock, p.maxStock - p.stock);
+      syncStepInput();
+    });
+
+    cancelBtn.addEventListener('click', function(){
+      state.pendingDelta = 0;
+      syncStepInput();
+    });
+
+    saveBtn.addEventListener('click', function(){
+      if (state.pendingDelta === 0){
+        showToast('Tidak ada perubahan untuk disimpan.');
+        return;
+      }
+      var delta = state.pendingDelta;
+      p.stock = clamp(p.stock + delta, 0, p.maxStock);
+      p.history.unshift({ date: new Date(), label: (delta > 0 ? ('Penambahan manual +' + delta + ' ' + p.unit) : ('Pengurangan manual ' + delta + ' ' + p.unit)) });
+      state.pendingDelta = 0;
+      showToast('Stok ' + p.name + ' diperbarui menjadi ' + fmtNum(p.stock) + ' ' + p.unit + '.');
+      refreshAllData();
+      renderDrawerTab();
+      pulseValue(document.getElementById('fact-stock'));
+    });
+
+    usedBtn.addEventListener('click', function(){
+      if (p.stock <= 0){
+        showToast('Stok sudah habis.');
+        return;
+      }
+      p.stock -= 1;
+      p.history.unshift({ date: new Date(), label: 'Ditandai 1 ' + p.unit + ' terpakai' });
+      usedFlash.style.display = 'block';
+      setTimeout(function(){ usedFlash.style.display = 'none'; }, 2200);
+      refreshAllData();
+      renderDrawerTab();
+      pulseValue(document.getElementById('fact-stock'));
+    });
+  }
+
+  /* ============================================================
+     GLOBAL REFRESH
+  ============================================================ */
+  function refreshAllData(){
+    LIVE = computeLiveStats();
+    PERIOD_STATS['September'] = { total: LIVE.total, low: LIVE.low, expiring: LIVE.expiring, waste: LIVE.waste };
+    renderStatCards();
+    renderCategoryChart();
+    renderStatusDistribution();
+    renderValueGauge();
+    renderNotifications();
+    if (state.view === 'inventory') renderProductList();
+  }
+
+  /* ============================================================
+     INIT
+  ============================================================ */
+  function init(){
+    renderStatCards();
+    renderCategoryChart();
+    renderStatusDistribution();
+    renderValueGauge();
+    renderActivity();
+    renderNotifications();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
